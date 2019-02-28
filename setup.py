@@ -4,11 +4,11 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name='pyathena_simple',
+    name='pythena',
     version='v0.1.0',
     license='Mozilla Public License Version 2.0',
     author='chris.pruitt',
-    url='https://github.com/chrispruitt/pyathena_simple',
+    url='https://github.com/chrispruitt/pythena',
     author_email='chris.pruitt15@gmail.com',
     long_description_content_type="text/markdown",
     long_description=long_description,

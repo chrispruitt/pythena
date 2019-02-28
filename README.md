@@ -1,24 +1,29 @@
-# pyathena_simple
+# pythena
 
 This is a simple python module that will allow you to query athena the same way the AWS Athena console would. It only requires a database name and query string.
+
+## Install
+```bash
+pip install pythena
+```
 
 ## Usage
 
 ```python
-from pyathena_simple import athena
+import pythena
 
 # Returns results as a pandas dataframe
-df = athena.execute(database="mydatabase", query="select * from mytable")
+df = pythena.execute(database="mydatabase", query="select * from mytable")
 
 print(df.sample(n=2)) # Prints 2 rows from your dataframe
 ```
 
 Specify an s3 url to save results to a bucket.
 ```python
-from pyathena_simple import athena
+import pythena
 
 # Returns results as a pandas dataframe
-df = athena.execute(database="mydatabase", 
+df = pythena.execute(database="mydatabase", 
                     query="select * from mytable", 
                     s3_output_url="s3://mybucket/mydir")
 
