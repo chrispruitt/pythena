@@ -1,6 +1,6 @@
 #rm -r build/
 #rm -r dist/
-#rm -r pyathena_simple.egg-info/
+#rm -r pyathena.egg-info/
 
 # build package
 python3 -m pip install --user --upgrade setuptools wheel

@@ -10,6 +10,7 @@ from retrying import retry
 
 __athena = boto3.client('athena')
 __s3 = boto3.client('s3')
+__glue = boto3.client('glue')
 __s3_path_regex = '^s3:\/\/[a-zA-Z0-9.\-_\/]*$'
 
 
@@ -19,6 +20,22 @@ class QueryExecutionTimeoutException(Exception):
 
 class InvalidS3PathException(Exception):
     pass
+
+
+def print_databases():
+    result = __glue.get_databases()
+    databases = []
+    for item in result["DatabaseList"]:
+        databases.append(item["Name"])
+    __print_list(databases)
+
+
+def print_tables(database):
+    result = __glue.get_tables(DatabaseName=database)
+    tables = []
+    for item in result["TableList"]:
+        tables.append(item["Name"])
+    __print_list(tables)
 
 
 def execute(database, query, s3_output_url=None):
@@ -99,3 +116,9 @@ def __parse_s3_path(s3_path):
     bucket = url.netloc
     path = url.path.lstrip('/')
     return bucket, path
+
+
+def __print_list(_list):
+    _list.sort()
+    for item in _list:
+        print(item)
