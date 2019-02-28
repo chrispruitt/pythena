@@ -41,4 +41,4 @@ print(df.sample(n=2)) # Prints 2 rows from your dataframe
 ```
 
 ## Note
-By default, when executing athena queries, via boto3 or the AWS athena console, the results are saved in an s3 bucket. This module by default, assuming a successful execution, will delete the s3 result file to keep s3 clean. If an s3_output_url is provided, it the result file will not be deleted.
+By default, when executing athena queries, via boto3 or the AWS athena console, the results are saved in an s3 bucket. This module by default, assuming a successful execution, will delete the s3 result file to keep s3 clean. If an s3_output_url is provided, then the result file will not be deleted.
