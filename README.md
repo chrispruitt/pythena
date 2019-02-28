@@ -7,6 +7,16 @@ This is a simple python module that will allow you to query athena the same way 
 pip install pythena
 ```
 
+## Setup
+Be sure to set up your AWS authentication credentials. You can do so by using the aws cli and running
+```
+pip install awscli
+aws configure
+```
+More help on configuring the aws cli here https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-configure.html
+
+
+
 ## Usage
 
 ```python
