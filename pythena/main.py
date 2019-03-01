@@ -3,7 +3,6 @@ import re
 from datetime import datetime
 from urllib.parse import urlparse
 import boto3
-import botocore
 import pandas as pd
 from retrying import retry
 
@@ -19,6 +18,14 @@ class QueryExecutionTimeoutException(Exception):
 
 
 class InvalidS3PathException(Exception):
+    pass
+
+
+class QueryExecutionFailedException(Exception):
+    pass
+
+
+class QueryUnknownStatusException(Exception):
     pass
 
 
@@ -69,22 +76,19 @@ def __execute_query(database, query, s3_output_url, cleanup_s3_results=True):
     if status == 'SUCCEEDED':
         s3_key = s3_path + "/" + query_execution_id + '.csv'
 
-        print(s3_bucket, s3_key)
-        try:
-            obj = __s3.get_object(Bucket=s3_bucket, Key=s3_key)
-            df = pd.read_csv(io.BytesIO(obj['Body'].read()))
+        obj = __s3.get_object(Bucket=s3_bucket, Key=s3_key)
+        df = pd.read_csv(io.BytesIO(obj['Body'].read()))
 
-            # Remove result file from s3
-            if cleanup_s3_results:
-                __s3.delete_object(Bucket=s3_bucket, Key=s3_key)
-                __s3.delete_object(Bucket=s3_bucket, Key=s3_key + '.metadata')
+        # Remove result file from s3
+        if cleanup_s3_results:
+            __s3.delete_object(Bucket=s3_bucket, Key=s3_key)
+            __s3.delete_object(Bucket=s3_bucket, Key=s3_key + '.metadata')
 
-            return df
-        except botocore.exceptions.ClientError as e:
-            if e.response['Error']['Code'] == "404":
-                print("The object does not exist at: " + s3_key)
-            else:
-                raise
+        return df
+    elif status == "FAILED":
+        raise QueryExecutionFailedException("Query Failed. Check athena logs for more info.")
+    else:
+        raise QueryUnknownStatusException("Query is in an unknown status. Check athena logs for more info.")
 
 
 @retry(stop_max_attempt_number=10,
