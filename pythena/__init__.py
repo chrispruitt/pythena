@@ -1,1 +1,2 @@
-from pythena.main import execute, print_databases, print_tables
+from pythena.Athena import Athena
+from pythena.Utils import print_tables, print_databases, get_databases

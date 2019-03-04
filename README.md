@@ -16,14 +16,15 @@ aws configure
 More help on configuring the aws cli here https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-configure.html
 
 
-
 ## Usage
 
 ```python
 import pythena
 
+athena_client = pythena.Athena(database="mydatabase") 
+
 # Returns results as a pandas dataframe
-df = pythena.execute(database="mydatabase", query="select * from mytable")
+df = athena_client.execute(query="select * from mytable")
 
 print(df.sample(n=2)) # Prints 2 rows from your dataframe
 ```
@@ -32,9 +33,10 @@ Specify an s3 url to save results to a bucket.
 ```python
 import pythena
 
+athena_client = pythena.Athena(database="mydatabase")
+
 # Returns results as a pandas dataframe
-df = pythena.execute(database="mydatabase", 
-                    query="select * from mytable", 
+df = athena_client.execute(query="select * from mytable", 
                     s3_output_url="s3://mybucket/mydir")
 
 print(df.sample(n=2)) # Prints 2 rows from your dataframe
@@ -46,8 +48,12 @@ print(df.sample(n=2)) # Prints 2 rows from your dataframe
 import pythena
 
 pythena.print_databases() # Prints out all databases listed in the glue catalog
+pythena.print_databases(region='us-east-1') # Overrides default region
 
-pythena.print_tables('mydatabase') # Prints out all tables in a database
+
+athena_client = pythena.Athena(database="mydatabase", region='us-east-1') # Override default region
+
+athena_client.print_tables('mydatabase') # Prints out all tables in a database
 ```
 
 ## Note
