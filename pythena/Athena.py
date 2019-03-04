@@ -32,7 +32,7 @@ class Athena:
             raise Exceptions.DatabaseNotFound("Database " + database + " not found.")
 
     def print_tables(self):
-        Utils.print_tables(self.__database)
+        Utils.print_tables(self.__database, self.__region)
 
     def execute(self, query, s3_output_url=None):
         cleanup_s3_results = False
