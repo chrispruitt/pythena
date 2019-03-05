@@ -16,45 +16,50 @@ aws configure
 More help on configuring the aws cli here https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-configure.html
 
 
-## Usage
+## Simple Usage
 
 ```python
 import pythena
 
-athena_client = pythena.Athena(database="mydatabase") 
+athena_client = pythena.Athena("mydatabase") 
 
 # Returns results as a pandas dataframe
-df = athena_client.execute(query="select * from mytable")
+df = athena_client.execute("select * from mytable")
 
 print(df.sample(n=2)) # Prints 2 rows from your dataframe
 ```
 
-Specify an s3 url to save results to a bucket.
-```python
-import pythena
-
-athena_client = pythena.Athena(database="mydatabase")
-
-# Returns results as a pandas dataframe
-df = athena_client.execute(query="select * from mytable", 
-                    s3_output_url="s3://mybucket/mydir")
-
-print(df.sample(n=2)) # Prints 2 rows from your dataframe
-```
-
-## Extra Usages
+## Full Usage
 
 ```python
 import pythena
 
-pythena.print_databases() # Prints out all databases listed in the glue catalog
+ # Prints out all databases listed in the glue catalog
+pythena.print_databases()
 pythena.print_databases(region='us-east-1') # Overrides default region
 
+# Gets all databases and returns as a list
+pythena.get_databases()
+pythena.get_databases(region='us-east-1') # Overrides default region
 
-athena_client = pythena.Athena(database="mydatabase", region='us-east-1') # Override default region
+# Connect to a database
+athena_client = pythena.Athena(database="mydatabase")
+# Connect to a database and override default aws region in your aws configuration
+athena_client = pythena.Athena(database="mydatabase", region='us-east-1')
 
-athena_client.print_tables('mydatabase') # Prints out all tables in a database
+# Prints out all tables in a database
+athena_client.print_tables()
+
+# Gets all tables in the database you are connected to and returns as a list
+athena_client.get_tables()
+
+# Execute a query
+dataframe = athena_client.execute(query="select * from my_table") # Results are  returned as a dataframe
+
+# Execute a query and save results to s3
+dataframe = athena_client.execute(query="select * from my_table", s3_output_url="s3://mybucket/mydir") # Results are  returned as a dataframe
+
 ```
 
 ## Note
-By default, when executing athena queries, via boto3 or the AWS athena console, the results are saved in an s3 bucket. This module by default, assuming a successful execution, will delete the s3 result file to keep s3 clean. If an s3_output_url is provided, then the result file will not be deleted.
+By default, when executing athena queries, via boto3 or the AWS athena console, the results are saved in an s3 bucket. This module by default, assuming a successful execution, will delete the s3 result file to keep s3 clean. If an s3_output_url is provided, then the results will be saved to that location and will not be deleted.

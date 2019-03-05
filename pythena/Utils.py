@@ -14,19 +14,6 @@ def print_databases(region=None):
     print_list(get_databases(region))
 
 
-def get_tables(database, region=None):
-    glue = boto3.client('glue', region_name=region)
-    result = glue.get_tables(DatabaseName=database)
-    tables = []
-    for item in result["TableList"]:
-        tables.append(item["Name"])
-    return tables
-
-
-def print_tables(database, region=None):
-    print_list(get_tables(database, region))
-
-
 def print_list(_list):
     _list.sort()
     for item in _list:

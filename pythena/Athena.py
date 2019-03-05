@@ -31,8 +31,15 @@ class Athena:
         if database not in Utils.get_databases(region):
             raise Exceptions.DatabaseNotFound("Database " + database + " not found.")
 
+    def get_tables(self):
+        result = self.__glue.get_tables(DatabaseName=self.__database)
+        tables = []
+        for item in result["TableList"]:
+            tables.append(item["Name"])
+        return tables
+
     def print_tables(self):
-        Utils.print_tables(self.__database, self.__region)
+        Utils.print_list(self.get_tables())
 
     def execute(self, query, s3_output_url=None):
         cleanup_s3_results = False
