@@ -34,7 +34,7 @@ print(df.sample(n=2)) # Prints 2 rows from your dataframe
 ```python
 import pythena
 
- # Prints out all databases listed in the glue catalog
+# Prints out all databases listed in the glue catalog
 pythena.print_databases()
 pythena.print_databases(region='us-east-1') # Overrides default region
 
