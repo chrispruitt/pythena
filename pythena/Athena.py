@@ -41,19 +41,19 @@ class Athena:
     def print_tables(self):
         Utils.print_list(self.get_tables())
 
-    def execute(self, query, s3_output_url=None):
-        cleanup_s3_results = False
+    def execute(self, query, s3_output_url=None, save_results=False):
 
         if s3_output_url is None:
             s3_output_url = self.__get_default_s3_url()
-            cleanup_s3_results = True
+        else:
+            save_results = True
 
         return self.__execute_query(database=self.__database,
                                     query=query,
                                     s3_output_url=s3_output_url,
-                                    cleanup_s3_results=cleanup_s3_results)
+                                    save_results=save_results)
 
-    def __execute_query(self, database, query, s3_output_url, cleanup_s3_results=True):
+    def __execute_query(self, database, query, s3_output_url, return_results=True, save_results=True):
         s3_bucket, s3_path = self.__parse_s3_path(s3_output_url)
 
         response = self.__athena.start_query_execution(
@@ -71,15 +71,18 @@ class Athena:
         if status == 'SUCCEEDED':
             s3_key = s3_path + "/" + query_execution_id + '.csv'
 
-            obj = self.__s3.get_object(Bucket=s3_bucket, Key=s3_key)
-            df = pd.read_csv(io.BytesIO(obj['Body'].read()))
+            if return_results:
+                obj = self.__s3.get_object(Bucket=s3_bucket, Key=s3_key)
+                df = pd.read_csv(io.BytesIO(obj['Body'].read()))
 
-            # Remove result file from s3
-            if cleanup_s3_results:
-                self.__s3.delete_object(Bucket=s3_bucket, Key=s3_key)
-                self.__s3.delete_object(Bucket=s3_bucket, Key=s3_key + '.metadata')
+                # Remove result file from s3
+                if not save_results:
+                    self.__s3.delete_object(Bucket=s3_bucket, Key=s3_key)
+                    self.__s3.delete_object(Bucket=s3_bucket, Key=s3_key + '.metadata')
 
-            return df
+                return df, query_execution_id
+            else:
+                return query_execution_id
         elif status == "FAILED":
             raise Exceptions.QueryExecutionFailedException("Query Failed. Check athena logs for more info.")
         else:

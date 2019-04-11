@@ -29,7 +29,27 @@ df = athena_client.execute("select * from mytable")
 print(df.sample(n=2)) # Prints 2 rows from your dataframe
 ```
 
-## Full Usage
+## Connect to Database
+```python
+import pythena
+
+# Connect to a database
+athena_client = pythena.Athena(database="mydatabase")
+# Connect to a database and override default aws region in your aws configuration
+athena_client = pythena.Athena(database="mydatabase", region='us-east-1')
+
+```
+
+## athena_client.execute()
+```
+execute(
+  query = 'SQL_QUERY',                 # Required
+  s3_output_url='FULL_S3_PATH',        # Optional (Format example: 's3://mybucket/mydir'
+  save_results=TRUE | FALSE            # Optional defaults to True only when 's3_output_url' is provided. If True, the s3 results will not be deleted and an tuple is returned with the execution_id.
+)
+```
+
+## Full Usage Examples
 
 ```python
 import pythena
@@ -44,8 +64,6 @@ pythena.get_databases(region='us-east-1') # Overrides default region
 
 # Connect to a database
 athena_client = pythena.Athena(database="mydatabase")
-# Connect to a database and override default aws region in your aws configuration
-athena_client = pythena.Athena(database="mydatabase", region='us-east-1')
 
 # Prints out all tables in a database
 athena_client.print_tables()
@@ -58,6 +76,9 @@ dataframe = athena_client.execute(query="select * from my_table") # Results are 
 
 # Execute a query and save results to s3
 dataframe = athena_client.execute(query="select * from my_table", s3_output_url="s3://mybucket/mydir") # Results are  returned as a dataframe
+
+# Get Execution Id and save results
+dataframe, execution_id = athena_client.execute(query="select * from my_table", save_results=True)
 
 ```
 
