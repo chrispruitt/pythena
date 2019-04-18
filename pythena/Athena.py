@@ -7,6 +7,7 @@ import pandas as pd
 from retrying import retry
 import pythena.Utils as Utils
 import pythena.Exceptions as Exceptions
+from botocore.errorfactory import ClientError
 
 
 class Athena:
@@ -69,11 +70,27 @@ class Athena:
         status = self.__poll_status(query_execution_id)
 
         if status == 'SUCCEEDED':
+
             s3_key = s3_path + "/" + query_execution_id + '.csv'
 
             if return_results:
-                obj = self.__s3.get_object(Bucket=s3_bucket, Key=s3_key)
-                df = pd.read_csv(io.BytesIO(obj['Body'].read()))
+                # Dirty patch to support descriptive queries such as describe table and show partition:
+                try:
+                    obj = self.__s3.get_object(Bucket=s3_bucket, Key=s3_key)
+                    df = pd.read_csv(io.BytesIO(obj['Body'].read()))
+                except ClientError as e:
+                    if e.response['Error']['Code'] == 'NoSuchKey':
+                        try:
+                            s3_key = s3_path + "/" + query_execution_id + '.txt'
+                            obj = self.__s3.get_object(Bucket=s3_bucket, Key=s3_key)
+                            df = obj['Body'].read().decode('utf-8')
+                        except ClientError as e:
+                            if e.response['Error']['Code'] == 'NoSuchKey':
+                                raise Exceptions.QueryNotSupported("The specified query is not supported by this package.")
+                            else:
+                                raise e
+                    else:
+                        raise e
 
                 # Remove result file from s3
                 if not save_results:

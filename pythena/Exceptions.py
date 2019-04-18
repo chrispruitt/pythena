@@ -20,3 +20,7 @@ class NoRegionFoundError(Exception):
 
 class DatabaseNotFound(Exception):
     pass
+
+
+class QueryNotSupported(Exception):
+    pass
