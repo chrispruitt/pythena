@@ -10,7 +10,7 @@ import pythena.Exceptions as Exceptions
 from botocore.errorfactory import ClientError
 
 
-class Athena
+class Athena:
 
     __database = ''
     __region = ''
