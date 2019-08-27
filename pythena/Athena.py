@@ -5,14 +5,12 @@ from urllib.parse import urlparse
 import boto3
 import pandas as pd
 from retrying import retry
-#import pythena.Utils as Utils
-#import pythena.Exceptions as Exceptions
-import Exceptions as Exceptions
-import Utils as Utils
+import pythena.Utils as Utils
+import pythena.Exceptions as Exceptions
 from botocore.errorfactory import ClientError
 
 
-class Athena:
+class Athena
 
     __database = ''
     __region = ''
@@ -45,6 +43,12 @@ class Athena:
         Utils.print_list(self.get_tables())
 
     def execute(self, query, s3_output_url=None, save_results=False, run_async=False):
+        '''
+        Execute a query on Athena
+        -- If run_async is false, returns dataframe and query id. If true, returns just the query id
+        -- Data deleted unless save_results true, to keep s3 bucket clean
+        -- Uses default s3 output url unless otherwise specified 
+        '''
 
         if s3_output_url is None:
             s3_output_url = self.__get_default_s3_url()
@@ -58,7 +62,6 @@ class Athena:
                                     run_async=run_async)
 
     def __execute_query(self, database, query, s3_output_url, return_results=True, save_results=True, run_async=False):
-        # Executes query and returns pandas df when finished
         s3_bucket, s3_path = self.__parse_s3_path(s3_output_url)
 
         response = self.__athena.start_query_execution(
@@ -84,6 +87,7 @@ class Athena:
     def get_result(self, query_execution_id, save_results=False):
         '''
         Given an execution id, returns result as a pandas df if successful. Prints error otherwise. 
+        -- Data deleted unless save_results true
         '''
         # Get execution status and save path, which we can then split into bucket and key. Automatically handles csv/txt 
         res = self.__athena.get_query_execution(QueryExecutionId = query_execution_id) 

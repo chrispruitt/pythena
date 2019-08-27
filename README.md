@@ -45,7 +45,8 @@ athena_client = pythena.Athena(database="mydatabase", region='us-east-1')
 execute(
   query = 'SQL_QUERY',                 # Required
   s3_output_url='FULL_S3_PATH',        # Optional (Format example: 's3://mybucket/mydir'
-  save_results=TRUE | FALSE            # Optional defaults to True only when 's3_output_url' is provided. If True, the s3 results will not be deleted and an tuple is returned with the execution_id.
+  save_results=TRUE | FALSE            # Optional. Defaults to True only when 's3_output_url' is provided. If True, the s3 results will not be deleted and an tuple is returned with the execution_id.
+  run_async=TRUE | FALSE               # Optional. If True, allows you to run the query asynchronously. Returns execution_id, use get_result(execution_id) to fetch it when finished
 )
 ```
 
@@ -79,6 +80,10 @@ dataframe = athena_client.execute(query="select * from my_table", s3_output_url=
 
 # Get Execution Id and save results
 dataframe, execution_id = athena_client.execute(query="select * from my_table", save_results=True)
+
+# Execute a query asynchronously
+execution_id = athena_client.execute(query="select * from my_table", run_async=True) # Returns just the execution id 
+dataframe = athena_client.get_result(execution_id) # Will report errors if query failed or let you know if it is still running
 
 ```
 
