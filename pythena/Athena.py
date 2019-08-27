@@ -5,8 +5,10 @@ from urllib.parse import urlparse
 import boto3
 import pandas as pd
 from retrying import retry
-import pythena.Utils as Utils
-import pythena.Exceptions as Exceptions
+#import pythena.Utils as Utils
+#import pythena.Exceptions as Exceptions
+import Exceptions as Exceptions
+import Utils as Utils
 from botocore.errorfactory import ClientError
 
 
@@ -55,6 +57,7 @@ class Athena:
                                     save_results=save_results)
 
     def __execute_query(self, database, query, s3_output_url, return_results=True, save_results=True):
+        # Executes query and returns pandas df when finished
         s3_bucket, s3_path = self.__parse_s3_path(s3_output_url)
 
         response = self.__athena.start_query_execution(
@@ -69,41 +72,38 @@ class Athena:
         query_execution_id = response['QueryExecutionId']
         status = self.__poll_status(query_execution_id)
 
-        if status == 'SUCCEEDED':
+        df = self.get_result(query_execution_id)
+        return df, query_execution_id
+    
 
-            s3_key = s3_path + "/" + query_execution_id + '.csv'
+    def get_result(self, query_execution_id, save_results=False):
+        '''
+        Given an execution id, returns result as a pandas df if successful. Prints error otherwise. 
+        '''
+        # Get execution status and save path, which we can then split into bucket and key. Automatically handles csv/txt 
+        res = self.__athena.get_query_execution(QueryExecutionId = query_execution_id) 
+        s3_bucket, s3_key = self.__parse_s3_path(res['QueryExecution']['ResultConfiguration']['OutputLocation'])
 
-            if return_results:
-                # Dirty patch to support descriptive queries such as describe table and show partition:
-                try:
-                    obj = self.__s3.get_object(Bucket=s3_bucket, Key=s3_key)
-                    df = pd.read_csv(io.BytesIO(obj['Body'].read()))
-                except ClientError as e:
-                    if e.response['Error']['Code'] == 'NoSuchKey':
-                        try:
-                            s3_key = s3_path + "/" + query_execution_id + '.txt'
-                            obj = self.__s3.get_object(Bucket=s3_bucket, Key=s3_key)
-                            df = obj['Body'].read().decode('utf-8')
-                        except ClientError as e:
-                            if e.response['Error']['Code'] == 'NoSuchKey':
-                                raise Exceptions.QueryNotSupported("The specified query is not supported by this package.")
-                            else:
-                                raise e
-                    else:
-                        raise e
+        # If succeed, return df
+        if res['QueryExecution']['Status']['State'] == 'SUCCEEDED':
+            obj = self.__s3.get_object(Bucket=s3_bucket, Key=s3_key)
+            df = pd.read_csv(io.BytesIO(obj['Body'].read()))
+            
+            # Remove results from s3
+            if not save_results:
+                self.__s3.delete_object(Bucket=s3_bucket, Key=s3_key)
+                self.__s3.delete_object(Bucket=s3_bucket, Key=s3_key + '.metadata')
 
-                # Remove result file from s3
-                if not save_results:
-                    self.__s3.delete_object(Bucket=s3_bucket, Key=s3_key)
-                    self.__s3.delete_object(Bucket=s3_bucket, Key=s3_key + '.metadata')
+            return df
 
-                return df, query_execution_id
-            else:
-                return query_execution_id
-        elif status == "FAILED":
-            raise Exceptions.QueryExecutionFailedException("Query Failed. Check athena logs for more info.")
-        else:
+        # If failed, return error message
+        elif res['QueryExecution']['Status']['State'] == 'FAILED':
+            raise Exceptions.QueryExecutionFailedException("Query failed with response: %s" % (res['QueryExecution']['Status']['StateChangeReason']))
+        elif res['QueryExecution']['Status']['State'] == 'RUNNING':
+            raise Exceptions.QueryStillRunningException("Query has not finished executing.")
+        else: 
             raise Exceptions.QueryUnknownStatusException("Query is in an unknown status. Check athena logs for more info.")
+
 
     @retry(stop_max_attempt_number=10,
            wait_exponential_multiplier=300,
@@ -117,7 +117,7 @@ class Athena:
         elif status == 'FAILED':
             return status
         else:
-            raise Exceptions.QueryExecutionTimeoutException("Query to athena has timed out. Try running in query in the athena")
+            raise Exceptions.QueryExecutionTimeoutException("Query to athena has timed out. Try running the query in the athena or asynchronously")
 
     # This returns the same bucket and key the AWS Athena console would use for its queries
     def __get_default_s3_url(self):
