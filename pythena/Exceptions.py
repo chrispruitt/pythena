@@ -14,6 +14,10 @@ class QueryUnknownStatusException(Exception):
     pass
 
 
+class QueryStillRunningException(Exception):
+    pass
+
+
 class NoRegionFoundError(Exception):
     pass
 

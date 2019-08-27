@@ -42,7 +42,13 @@ class Athena:
     def print_tables(self):
         Utils.print_list(self.get_tables())
 
-    def execute(self, query, s3_output_url=None, save_results=False):
+    def execute(self, query, s3_output_url=None, save_results=False, run_async=False):
+        '''
+        Execute a query on Athena
+        -- If run_async is false, returns dataframe and query id. If true, returns just the query id
+        -- Data deleted unless save_results true, to keep s3 bucket clean
+        -- Uses default s3 output url unless otherwise specified 
+        '''
 
         if s3_output_url is None:
             s3_output_url = self.__get_default_s3_url()
@@ -52,9 +58,10 @@ class Athena:
         return self.__execute_query(database=self.__database,
                                     query=query,
                                     s3_output_url=s3_output_url,
-                                    save_results=save_results)
+                                    save_results=save_results,
+                                    run_async=run_async)
 
-    def __execute_query(self, database, query, s3_output_url, return_results=True, save_results=True):
+    def __execute_query(self, database, query, s3_output_url, return_results=True, save_results=True, run_async=False):
         s3_bucket, s3_path = self.__parse_s3_path(s3_output_url)
 
         response = self.__athena.start_query_execution(
@@ -67,43 +74,45 @@ class Athena:
             })
 
         query_execution_id = response['QueryExecutionId']
-        status = self.__poll_status(query_execution_id)
 
-        if status == 'SUCCEEDED':
-
-            s3_key = s3_path + "/" + query_execution_id + '.csv'
-
-            if return_results:
-                # Dirty patch to support descriptive queries such as describe table and show partition:
-                try:
-                    obj = self.__s3.get_object(Bucket=s3_bucket, Key=s3_key)
-                    df = pd.read_csv(io.BytesIO(obj['Body'].read()))
-                except ClientError as e:
-                    if e.response['Error']['Code'] == 'NoSuchKey':
-                        try:
-                            s3_key = s3_path + "/" + query_execution_id + '.txt'
-                            obj = self.__s3.get_object(Bucket=s3_bucket, Key=s3_key)
-                            df = obj['Body'].read().decode('utf-8')
-                        except ClientError as e:
-                            if e.response['Error']['Code'] == 'NoSuchKey':
-                                raise Exceptions.QueryNotSupported("The specified query is not supported by this package.")
-                            else:
-                                raise e
-                    else:
-                        raise e
-
-                # Remove result file from s3
-                if not save_results:
-                    self.__s3.delete_object(Bucket=s3_bucket, Key=s3_key)
-                    self.__s3.delete_object(Bucket=s3_bucket, Key=s3_key + '.metadata')
-
-                return df, query_execution_id
-            else:
-                return query_execution_id
-        elif status == "FAILED":
-            raise Exceptions.QueryExecutionFailedException("Query Failed. Check athena logs for more info.")
+        # If executing asynchronously, just return the id so results can be fetched later. Else, return dataframe (or error message)
+        if run_async: 
+          return query_execution_id
         else:
+            status = self.__poll_status(query_execution_id)
+            df = self.get_result(query_execution_id)
+            return df, query_execution_id
+    
+
+    def get_result(self, query_execution_id, save_results=False):
+        '''
+        Given an execution id, returns result as a pandas df if successful. Prints error otherwise. 
+        -- Data deleted unless save_results true
+        '''
+        # Get execution status and save path, which we can then split into bucket and key. Automatically handles csv/txt 
+        res = self.__athena.get_query_execution(QueryExecutionId = query_execution_id) 
+        s3_bucket, s3_key = self.__parse_s3_path(res['QueryExecution']['ResultConfiguration']['OutputLocation'])
+
+        # If succeed, return df
+        if res['QueryExecution']['Status']['State'] == 'SUCCEEDED':
+            obj = self.__s3.get_object(Bucket=s3_bucket, Key=s3_key)
+            df = pd.read_csv(io.BytesIO(obj['Body'].read()))
+            
+            # Remove results from s3
+            if not save_results:
+                self.__s3.delete_object(Bucket=s3_bucket, Key=s3_key)
+                self.__s3.delete_object(Bucket=s3_bucket, Key=s3_key + '.metadata')
+
+            return df
+
+        # If failed, return error message
+        elif res['QueryExecution']['Status']['State'] == 'FAILED':
+            raise Exceptions.QueryExecutionFailedException("Query failed with response: %s" % (res['QueryExecution']['Status']['StateChangeReason']))
+        elif res['QueryExecution']['Status']['State'] == 'RUNNING':
+            raise Exceptions.QueryStillRunningException("Query has not finished executing.")
+        else: 
             raise Exceptions.QueryUnknownStatusException("Query is in an unknown status. Check athena logs for more info.")
+
 
     @retry(stop_max_attempt_number=10,
            wait_exponential_multiplier=300,
@@ -112,12 +121,10 @@ class Athena:
         res = self.__athena.get_query_execution(QueryExecutionId=query_execution_id)
         status = res['QueryExecution']['Status']['State']
 
-        if status == 'SUCCEEDED':
-            return status
-        elif status == 'FAILED':
+        if status in ['SUCCEEDED', 'FAILED']:
             return status
         else:
-            raise Exceptions.QueryExecutionTimeoutException("Query to athena has timed out. Try running in query in the athena")
+            raise Exceptions.QueryExecutionTimeoutException("Query to athena has timed out. Try running the query in the athena or asynchronously")
 
     # This returns the same bucket and key the AWS Athena console would use for its queries
     def __get_default_s3_url(self):
