@@ -44,7 +44,7 @@ class Athena:
     def print_tables(self):
         Utils.print_list(self.get_tables())
 
-    def execute(self, query, s3_output_url=None, save_results=False):
+    def execute(self, query, s3_output_url=None, save_results=False, run_async=False):
 
         if s3_output_url is None:
             s3_output_url = self.__get_default_s3_url()
@@ -54,9 +54,10 @@ class Athena:
         return self.__execute_query(database=self.__database,
                                     query=query,
                                     s3_output_url=s3_output_url,
-                                    save_results=save_results)
+                                    save_results=save_results,
+                                    run_async=run_async)
 
-    def __execute_query(self, database, query, s3_output_url, return_results=True, save_results=True):
+    def __execute_query(self, database, query, s3_output_url, return_results=True, save_results=True, run_async=False):
         # Executes query and returns pandas df when finished
         s3_bucket, s3_path = self.__parse_s3_path(s3_output_url)
 
@@ -70,10 +71,14 @@ class Athena:
             })
 
         query_execution_id = response['QueryExecutionId']
-        status = self.__poll_status(query_execution_id)
 
-        df = self.get_result(query_execution_id)
-        return df, query_execution_id
+        # If executing asynchronously, just return the id so results can be fetched later. Else, return dataframe (or error message)
+        if run_async: 
+          return query_execution_id
+        else:
+            status = self.__poll_status(query_execution_id)
+            df = self.get_result(query_execution_id)
+            return df, query_execution_id
     
 
     def get_result(self, query_execution_id, save_results=False):
@@ -112,9 +117,7 @@ class Athena:
         res = self.__athena.get_query_execution(QueryExecutionId=query_execution_id)
         status = res['QueryExecution']['Status']['State']
 
-        if status == 'SUCCEEDED':
-            return status
-        elif status == 'FAILED':
+        if status in ['SUCCEEDED', 'FAILED']:
             return status
         else:
             raise Exceptions.QueryExecutionTimeoutException("Query to athena has timed out. Try running the query in the athena or asynchronously")
