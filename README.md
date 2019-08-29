@@ -85,6 +85,11 @@ dataframe, execution_id = athena_client.execute(query="select * from my_table", 
 execution_id = athena_client.execute(query="select * from my_table", run_async=True) # Returns just the execution id 
 dataframe = athena_client.get_result(execution_id) # Will report errors if query failed or let you know if it is still running
 
+# With asynchronous queries, can check status, get error, or cancel
+pythena.get_query_status(execution_id)
+pythena.get_query_error(execution_id)
+pythena.cancel_query(execution_id)
+
 ```
 
 ## Note
