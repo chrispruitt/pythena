@@ -107,7 +107,7 @@ class Athena:
 
         # If failed, return error message
         elif res['QueryExecution']['Status']['State'] == 'FAILED':
-            raise Exceptions.QueryExecutionFailedException("Query failed with response: %s" % (get_query_error(query_execution_id)))
+            raise Exceptions.QueryExecutionFailedException("Query failed with response: %s" % (self.get_query_error(query_execution_id)))
         elif res['QueryExecution']['Status']['State'] == 'RUNNING':
             raise Exceptions.QueryStillRunningException("Query has not finished executing.")
         else: 
@@ -118,7 +118,7 @@ class Athena:
            wait_exponential_multiplier=300,
            wait_exponential_max=60 * 1000)
     def __poll_status(self, query_execution_id):
-        status = get_query_status(query_execution_id)
+        status = self.get_query_status(query_execution_id)
         if status in ['SUCCEEDED', 'FAILED']:
             return status
         else:
