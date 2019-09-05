@@ -107,7 +107,7 @@ class Athena:
 
         # If failed, return error message
         elif res['QueryExecution']['Status']['State'] == 'FAILED':
-            raise Exceptions.QueryExecutionFailedException("Query failed with response: %s" % (res['QueryExecution']['Status']['StateChangeReason']))
+            raise Exceptions.QueryExecutionFailedException("Query failed with response: %s" % (self.get_query_error(query_execution_id)))
         elif res['QueryExecution']['Status']['State'] == 'RUNNING':
             raise Exceptions.QueryStillRunningException("Query has not finished executing.")
         else: 
@@ -118,9 +118,7 @@ class Athena:
            wait_exponential_multiplier=300,
            wait_exponential_max=60 * 1000)
     def __poll_status(self, query_execution_id):
-        res = self.__athena.get_query_execution(QueryExecutionId=query_execution_id)
-        status = res['QueryExecution']['Status']['State']
-
+        status = self.get_query_status(query_execution_id)
         if status in ['SUCCEEDED', 'FAILED']:
             return status
         else:
@@ -138,4 +136,23 @@ class Athena:
         bucket = url.netloc
         path = url.path.lstrip('/')
         return bucket, path
+    
+    # A few functions to surface boto client functions to pythena: get status, get query error, and cancel a query
+    def get_query_status(self, query_execution_id):
+        res = self.__athena.get_query_execution(QueryExecutionId=query_execution_id)
+        return res['QueryExecution']['Status']['State']
+
+    def get_query_error(self, query_execution_id):
+        res = self.__athena.get_query_execution(QueryExecutionId=query_execution_id)
+        if res['QueryExecutionId']['Status']['State']=='FAILED':
+            return res['QueryExecution']['Status']['StateChangeReason']
+        else: 
+            return "Query has not failed: check status or see Athena log for more details"
+
+    def cancel_query(self, query_execution_id): 
+        self.__athena.stop_query_execution(QueryExecutionId=query_execution_id)
+        return 
+
+
+
 
