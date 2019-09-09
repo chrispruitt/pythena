@@ -144,7 +144,7 @@ class Athena:
 
     def get_query_error(self, query_execution_id):
         res = self.__athena.get_query_execution(QueryExecutionId=query_execution_id)
-        if res['QueryExecutionId']['Status']['State']=='FAILED':
+        if res['QueryExecution']['Status']['State']=='FAILED':
             return res['QueryExecution']['Status']['StateChangeReason']
         else: 
             return "Query has not failed: check status or see Athena log for more details"
