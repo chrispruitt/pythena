@@ -9,7 +9,11 @@ python3 setup.py sdist bdist_wheel
 # Push to pypi.org repo
 python3 -m twine upload dist/*
 
-echo DONT FORGET TO COMMIT AND TAG
+VERSION=$(cat setup.py | grep "version=" | grep -o "v\d\d*.\d\d*.\d\d*" )
+
+echo "DONT FORGET TO COMMIT, PUSH, AND TAG!!!!!!!!!!!!!"
 # Commit and Tag to github
-#git tag v0.0.0
-#git push --tags
+echo "        git commit -m 'bump version'"
+echo "        git push"
+echo "        git tag ${VERSION}"
+echo "        git push --tags"
