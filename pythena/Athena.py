@@ -8,13 +8,15 @@ from retrying import retry
 import pythena.Utils as Utils
 import pythena.Exceptions as Exceptions
 from botocore.errorfactory import ClientError
+import logging
+logger = logging.getLogger(__name__)
 
 
 class Athena:
 
     __database = ''
     __region = ''
-    __athena = None
+    _athena = None
     __s3 = None
     __glue = None
     __s3_path_regex = '^s3:\/\/[a-zA-Z0-9.\-_\/]*$'
@@ -26,7 +28,7 @@ class Athena:
             region = boto3.session.Session().region_name
             if region is None:
                 raise Exceptions.NoRegionFoundError("No default aws region configuration found. Must specify a region.")
-        self.__athena = boto3.client('athena', region_name=region)
+        self._athena = boto3.client('athena', region_name=region)
         self.__s3 = boto3.client('s3', region_name=region)
         self.__glue = boto3.client('glue', region_name=region)
         if database not in Utils.get_databases(region):
@@ -38,6 +40,23 @@ class Athena:
         for item in result["TableList"]:
             tables.append(item["Name"])
         return tables
+
+    def get_columns(self, table_name):
+        table = self.__glue.get_table(DatabaseName=self.__database, Name=table_name)['Table']
+        cols = table['StorageDescriptor']['Columns']
+        cols = [c['Name'] for c in cols]
+        return cols
+
+    def get_all_running_queries(self):
+        exe_ids = self._athena.list_query_executions()['QueryExecutionIds']
+        running_ids = [i for i in exe_ids if self.get_query_status(i) == "RUNNING"]
+        return running_ids
+
+    def stop_all_queries(self):
+        running_ids = self.get_all_running_queries()
+        for ids in running_ids:
+            self._athena.stop_query_execution(QueryExecutionId=ids)
+        logger.info(f"Stopped {len(running_ids)} queries")
 
     def print_tables(self):
         Utils.print_list(self.get_tables())
@@ -64,7 +83,7 @@ class Athena:
     def __execute_query(self, database, query, s3_output_url, return_results=True, save_results=True, run_async=False):
         s3_bucket, s3_path = self.__parse_s3_path(s3_output_url)
 
-        response = self.__athena.start_query_execution(
+        response = self._athena.start_query_execution(
             QueryString=query,
             QueryExecutionContext={
                 'Database': database
@@ -82,7 +101,6 @@ class Athena:
             status = self.__poll_status(query_execution_id)
             df = self.get_result(query_execution_id)
             return df, query_execution_id
-    
 
     def get_result(self, query_execution_id, save_results=False):
         '''
@@ -90,7 +108,7 @@ class Athena:
         -- Data deleted unless save_results true
         '''
         # Get execution status and save path, which we can then split into bucket and key. Automatically handles csv/txt 
-        res = self.__athena.get_query_execution(QueryExecutionId = query_execution_id) 
+        res = self._athena.get_query_execution(QueryExecutionId = query_execution_id)
         s3_bucket, s3_key = self.__parse_s3_path(res['QueryExecution']['ResultConfiguration']['OutputLocation'])
 
         # If succeed, return df
@@ -139,18 +157,18 @@ class Athena:
     
     # A few functions to surface boto client functions to pythena: get status, get query error, and cancel a query
     def get_query_status(self, query_execution_id):
-        res = self.__athena.get_query_execution(QueryExecutionId=query_execution_id)
+        res = self._athena.get_query_execution(QueryExecutionId=query_execution_id)
         return res['QueryExecution']['Status']['State']
 
     def get_query_error(self, query_execution_id):
-        res = self.__athena.get_query_execution(QueryExecutionId=query_execution_id)
+        res = self._athena.get_query_execution(QueryExecutionId=query_execution_id)
         if res['QueryExecution']['Status']['State']=='FAILED':
             return res['QueryExecution']['Status']['StateChangeReason']
         else: 
             return "Query has not failed: check status or see Athena log for more details"
 
     def cancel_query(self, query_execution_id): 
-        self.__athena.stop_query_execution(QueryExecutionId=query_execution_id)
+        self._athena.stop_query_execution(QueryExecutionId=query_execution_id)
         return 
 
 
