@@ -3,10 +3,20 @@ import boto3
 
 def get_databases(region=None):
     glue = boto3.client('glue', region_name=region)
-    result = glue.get_databases()
     databases = []
-    for item in result["DatabaseList"]:
-        databases.append(item["Name"])
+
+    params = {}
+
+    while True:
+        result = glue.get_databases(**params)
+
+        for item in result["DatabaseList"]:
+            databases.append(item["Name"])
+        if result.get('NextToken') is None:
+            break
+        else:
+            params['NextToken'] = result.get('NextToken')
+
     return databases
 
 

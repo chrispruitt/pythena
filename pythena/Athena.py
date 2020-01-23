@@ -35,10 +35,21 @@ class Athena:
             raise Exceptions.DatabaseNotFound("Database " + database + " not found.")
 
     def get_tables(self):
-        result = self.__glue.get_tables(DatabaseName=self.__database)
         tables = []
-        for item in result["TableList"]:
-            tables.append(item["Name"])
+        params = {
+            "DatabaseName": self.__database
+        }
+
+        while True:
+            result = self.__glue.get_tables(**params)
+
+            for item in result["TableList"]:
+                tables.append(item["Name"])
+            if result.get('NextToken') is None:
+                break
+            else:
+                params['NextToken'] = result.get('NextToken')
+
         return tables
 
     def get_columns(self, table_name):
