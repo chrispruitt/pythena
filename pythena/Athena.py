@@ -110,7 +110,7 @@ class Athena:
           return query_execution_id
         else:
             status = self.__poll_status(query_execution_id)
-            df = self.get_result(query_execution_id)
+            df = self.get_result(query_execution_id, save_results=save_results)
             return df, query_execution_id
 
     def get_result(self, query_execution_id, save_results=False):
