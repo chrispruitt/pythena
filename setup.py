@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name='pythena',
-    version='v1.4.1',
+    version='v1.4.2',
     license='Mozilla Public License Version 2.0',
     author='chris.pruitt',
     url='https://github.com/chrispruitt/pythena',
