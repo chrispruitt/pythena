@@ -1,8 +1,10 @@
 import boto3
 
 
-def get_databases(region=None):
-    glue = boto3.client('glue', region_name=region)
+def get_databases(region=None, session=None):
+    if session is None:
+        session = boto3.session.Session()
+    glue = session.client('glue', region_name=region)
     databases = []
 
     params = {}
@@ -20,8 +22,10 @@ def get_databases(region=None):
     return databases
 
 
-def print_databases(region=None):
-    print_list(get_databases(region))
+def print_databases(region=None, session=None):
+    if session is None:
+        session = boto3.session.Session()
+    print_list(get_databases(session, region))
 
 
 def print_list(_list):

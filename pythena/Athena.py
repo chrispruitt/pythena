@@ -21,17 +21,19 @@ class Athena:
     __glue = None
     __s3_path_regex = '^s3:\/\/[a-zA-Z0-9.\-_\/]*$'
 
-    def __init__(self, database, region='us-east-1'):
+    def __init__(self, database, region='us-east-1', session=None):
         self.__database = database
         self.__region = region
+        if session is None:
+            session = boto3.session.Session()
         if region is None:
-            region = boto3.session.Session().region_name
+            region = session.region_name
             if region is None:
                 raise Exceptions.NoRegionFoundError("No default aws region configuration found. Must specify a region.")
-        self._athena = boto3.client('athena', region_name=region)
-        self.__s3 = boto3.client('s3', region_name=region)
-        self.__glue = boto3.client('glue', region_name=region)
-        if database not in Utils.get_databases(region):
+        self._athena = session.client('athena', region_name=region)
+        self.__s3 = session.client('s3', region_name=region)
+        self.__glue = session.client('glue', region_name=region)
+        if database not in Utils.get_databases(session, region):
             raise Exceptions.DatabaseNotFound("Database " + database + " not found.")
 
     def get_tables(self):
@@ -106,8 +108,8 @@ class Athena:
         query_execution_id = response['QueryExecutionId']
 
         # If executing asynchronously, just return the id so results can be fetched later. Else, return dataframe (or error message)
-        if run_async: 
-          return query_execution_id
+        if run_async:
+            return query_execution_id
         else:
             status = self.__poll_status(query_execution_id)
             df = self.get_result(query_execution_id, save_results=save_results)
@@ -118,15 +120,15 @@ class Athena:
         Given an execution id, returns result as a pandas df if successful. Prints error otherwise. 
         -- Data deleted unless save_results true
         '''
-        # Get execution status and save path, which we can then split into bucket and key. Automatically handles csv/txt 
-        res = self._athena.get_query_execution(QueryExecutionId = query_execution_id)
+        # Get execution status and save path, which we can then split into bucket and key. Automatically handles csv/txt
+        res = self._athena.get_query_execution(QueryExecutionId=query_execution_id)
         s3_bucket, s3_key = self.__parse_s3_path(res['QueryExecution']['ResultConfiguration']['OutputLocation'])
 
         # If succeed, return df
         if res['QueryExecution']['Status']['State'] == 'SUCCEEDED':
             obj = self.__s3.get_object(Bucket=s3_bucket, Key=s3_key)
             df = pd.read_csv(io.BytesIO(obj['Body'].read()))
-            
+
             # Remove results from s3
             if not save_results:
                 self.__s3.delete_object(Bucket=s3_bucket, Key=s3_key)
@@ -139,7 +141,7 @@ class Athena:
             raise Exceptions.QueryExecutionFailedException("Query failed with response: %s" % (self.get_query_error(query_execution_id)))
         elif res['QueryExecution']['Status']['State'] == 'RUNNING':
             raise Exceptions.QueryStillRunningException("Query has not finished executing.")
-        else: 
+        else:
             raise Exceptions.QueryUnknownStatusException("Query is in an unknown status. Check athena logs for more info.")
 
 
@@ -165,7 +167,7 @@ class Athena:
         bucket = url.netloc
         path = url.path.lstrip('/')
         return bucket, path
-    
+
     # A few functions to surface boto client functions to pythena: get status, get query error, and cancel a query
     def get_query_status(self, query_execution_id):
         res = self._athena.get_query_execution(QueryExecutionId=query_execution_id)
@@ -178,9 +180,9 @@ class Athena:
         else: 
             return "Query has not failed: check status or see Athena log for more details"
 
-    def cancel_query(self, query_execution_id): 
+    def cancel_query(self, query_execution_id):
         self._athena.stop_query_execution(QueryExecutionId=query_execution_id)
-        return 
+        return
 
 
 
