@@ -16,6 +16,7 @@ class Athena:
 
     __database = ''
     __region = ''
+    _session = None
     _athena = None
     __s3 = None
     __glue = None
@@ -24,16 +25,15 @@ class Athena:
     def __init__(self, database, region='us-east-1', session=None):
         self.__database = database
         self.__region = region
-        if session is None:
-            session = boto3.session.Session()
+        self._session = session if session is not None else boto3.session.Session()
         if region is None:
-            region = session.region_name
+            region = self._session.region_name
             if region is None:
                 raise Exceptions.NoRegionFoundError("No default aws region configuration found. Must specify a region.")
-        self._athena = session.client('athena', region_name=region)
-        self.__s3 = session.client('s3', region_name=region)
-        self.__glue = session.client('glue', region_name=region)
-        if database not in Utils.get_databases(region=region, session=session):
+        self._athena = self._session.client('athena', region_name=region)
+        self.__s3 = self._session.client('s3', region_name=region)
+        self.__glue = self._session.client('glue', region_name=region)
+        if database not in Utils.get_databases(region=region, session=self._session):
             raise Exceptions.DatabaseNotFound("Database " + database + " not found.")
 
     def get_tables(self):
@@ -157,7 +157,7 @@ class Athena:
 
     # This returns the same bucket and key the AWS Athena console would use for its queries
     def __get_default_s3_url(self):
-        account_id = boto3.client('sts').get_caller_identity().get('Account')
+        account_id = self._session.client('sts').get_caller_identity().get('Account')
         return 's3://aws-athena-query-results-' + account_id + '-' + self.__region + "/Unsaved/" + datetime.now().strftime("%Y/%m/%d")
 
     def __parse_s3_path(self, s3_path):
