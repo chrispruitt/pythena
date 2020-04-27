@@ -33,7 +33,7 @@ class Athena:
         self._athena = session.client('athena', region_name=region)
         self.__s3 = session.client('s3', region_name=region)
         self.__glue = session.client('glue', region_name=region)
-        if database not in Utils.get_databases(session, region):
+        if database not in Utils.get_databases(region=region, session=session):
             raise Exceptions.DatabaseNotFound("Database " + database + " not found.")
 
     def get_tables(self):
