@@ -31,12 +31,15 @@ print(df.sample(n=2)) # Prints 2 rows from your dataframe
 
 ## Connect to Database
 ```python
+import boto3
 import pythena
 
 # Connect to a database
 athena_client = pythena.Athena(database="mydatabase")
 # Connect to a database and override default aws region in your aws configuration
 athena_client = pythena.Athena(database="mydatabase", region='us-east-1')
+# Connect to a database and override default profile in your aws configuration
+athena_client = pythena.Athena(database="mydatabase", session=boto3.session.Session())
 
 ```
 
@@ -53,18 +56,23 @@ execute(
 ## Full Usage Examples
 
 ```python
+import boto3
 import pythena
 
 # Prints out all databases listed in the glue catalog
 pythena.print_databases()
 pythena.print_databases(region='us-east-1') # Overrides default region
+pythena.print_databases(session=boto3.session.Session()) # Overrides default profile
 
 # Gets all databases and returns as a list
 pythena.get_databases()
 pythena.get_databases(region='us-east-1') # Overrides default region
+pythena.get_databases(session=boto3.session.Session()) # Overrides default profile
 
 # Connect to a database
 athena_client = pythena.Athena(database="mydatabase")
+athena_client = pythena.Athena(database="mydatabase", region='us-east-1') # Overrides default region
+athena_client = pythena.Athena(database="mydatabase", session=boto3.session.Session()) # Overrides default profile
 
 # Prints out all tables in a database
 athena_client.print_tables()
