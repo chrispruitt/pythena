@@ -24,12 +24,12 @@ class Athena:
 
     def __init__(self, database, region='us-east-1', session=None):
         self.__database = database
-        self.__region = region
         self._session = session if session is not None else boto3.session.Session()
         if region is None:
             region = self._session.region_name
             if region is None:
                 raise Exceptions.NoRegionFoundError("No default aws region configuration found. Must specify a region.")
+        self.__region = region
         self._athena = self._session.client('athena', region_name=region)
         self.__s3 = self._session.client('s3', region_name=region)
         self.__glue = self._session.client('glue', region_name=region)
