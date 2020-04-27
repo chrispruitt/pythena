@@ -23,8 +23,6 @@ def get_databases(region=None, session=None):
 
 
 def print_databases(region=None, session=None):
-    if session is None:
-        session = boto3.session.Session()
     print_list(get_databases(region=region, session=session))
 
 
