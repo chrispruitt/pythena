@@ -91,7 +91,7 @@ class Athena:
                                     query=query,
                                     s3_output_url=s3_output_url,
                                     save_results=save_results,
-                                    run_async=run_async
+                                    run_async=run_async,
                                     workgroup=workgroup)
 
     def __execute_query(self, database, query, s3_output_url, return_results=True, save_results=True, run_async=False, workgroup='primary'):
