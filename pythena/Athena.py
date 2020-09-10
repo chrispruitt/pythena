@@ -74,7 +74,7 @@ class Athena:
     def print_tables(self):
         Utils.print_list(self.get_tables())
 
-    def execute(self, query, s3_output_url=None, save_results=False, run_async=False):
+    def execute(self, query, s3_output_url=None, save_results=False, run_async=False, workgroup='primary'):
         '''
         Execute a query on Athena
         -- If run_async is false, returns dataframe and query id. If true, returns just the query id
@@ -91,9 +91,10 @@ class Athena:
                                     query=query,
                                     s3_output_url=s3_output_url,
                                     save_results=save_results,
-                                    run_async=run_async)
+                                    run_async=run_async
+                                    workgroup=workgroup)
 
-    def __execute_query(self, database, query, s3_output_url, return_results=True, save_results=True, run_async=False):
+    def __execute_query(self, database, query, s3_output_url, return_results=True, save_results=True, run_async=False, workgroup='primary'):
         s3_bucket, s3_path = self.__parse_s3_path(s3_output_url)
 
         response = self._athena.start_query_execution(
@@ -103,7 +104,8 @@ class Athena:
             },
             ResultConfiguration={
                 'OutputLocation': 's3://' + s3_bucket + "/" + s3_path,
-            })
+            },
+            WorkGroup=workgroup)
 
         query_execution_id = response['QueryExecutionId']
 
